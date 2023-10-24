@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	".github.com/Luzik-D/EMTest/internal/api"
 	".github.com/Luzik-D/EMTest/internal/storage"
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
@@ -25,23 +27,18 @@ func main() {
 
 	// init storage
 	st := storage.New()
-	st.AddPerson(storage.Person{
-		FullName: storage.FullName{
-			Name:       "ivan",
-			Surname:    "ivanov",
-			Patronimic: "ivanovich",
-		},
-		Age:    "42",
-		Nation: "42",
-		Sex:    "42",
-	})
-	p := st.GetPersons()
-	fmt.Println(p)
-	api.AddInfo(st)
-	p = st.GetPersons()
-	fmt.Println(p)
-	// route
 
+	// route
+	router := mux.NewRouter()
+
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Hello world")
+	}).Methods("GET")
+
+	router.HandleFunc("/api", api.APIHandler(st, logger)).Methods("POST")
+
+	logger.Info("Running server on " + os.Getenv("address"))
+	logger.Fatal(http.ListenAndServe(os.Getenv("address"), router))
 	// run server
 
 }

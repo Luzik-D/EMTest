@@ -2,15 +2,15 @@ package storage
 
 type Person struct {
 	FullName
-	Age    string
-	Sex    string
-	Nation string
+	Age    int    `json:"age,omitempty"`
+	Sex    string `json:"sex,omitempty"`
+	Nation string `json:"nation,omitempty"`
 }
 
 type FullName struct {
-	Name       string
-	Surname    string
-	Patronimic string
+	Name       string `json:"name"`
+	Surname    string `json:"surname"`
+	Patronimic string `json:"patronimic,omitempty"`
 }
 
 type Storage struct {
