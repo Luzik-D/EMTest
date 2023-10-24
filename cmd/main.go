@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
+	".github.com/Luzik-D/EMTest/internal/api"
+	".github.com/Luzik-D/EMTest/internal/storage"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
@@ -21,7 +24,22 @@ func main() {
 	logger.Info("info mode")
 
 	// init storage
-
+	st := storage.New()
+	st.AddPerson(storage.Person{
+		FullName: storage.FullName{
+			Name:       "ivan",
+			Surname:    "ivanov",
+			Patronimic: "ivanovich",
+		},
+		Age:    "42",
+		Nation: "42",
+		Sex:    "42",
+	})
+	p := st.GetPersons()
+	fmt.Println(p)
+	api.AddInfo(st)
+	p = st.GetPersons()
+	fmt.Println(p)
 	// route
 
 	// run server
