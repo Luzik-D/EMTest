@@ -10,91 +10,40 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type ageApiJSON struct {
+	Age int `json:"age"`
+}
+
+type genderApiJSON struct {
+	Gender string `json:"gender"`
+}
+
+type countryApiJSON struct {
+	Country []struct {
+		CountryID   string  `json:"country_id"`
+		Probability float64 `json:"probability"`
+	} `json:"country"`
+}
+
 const (
-	ageApiURL = "https://api.agify.io"
+	ageApiURL     = "https://api.agify.io"
+	genderApiURL  = "https://api.genderize.io"
+	countryApiURL = "https://api.nationalize.io"
 )
 
-type InfoAdder interface {
-	AddPerson(storage.Person)
-}
+func APIHandler(st *storage.Storage, log *logrus.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		person, err := createPersonFromRequest(r.Body, log)
+		if err != nil {
+			log.Error("Failed to create person throught API: ", err)
+			return
+		}
 
-// func getAge(ch chan string) {
-// 	time.Sleep(time.Second)
-// 	ch <- "22"
-// }
+		st.AddPerson(person)
 
-// func getNation(ch chan string) {
-// 	time.Sleep(time.Second)
-
-// 	ch <- "russian"
-// }
-
-// func getSex(ch chan string) {
-// 	time.Sleep(time.Second)
-
-// 	ch <- "male"
-// }
-
-// func getFullName() storage.FullName {
-// 	return storage.FullName{"petr", "petrov", "petrovich"}
-// }
-
-// func AddInfo(st *storage.Storage) {
-// 	var age, n, s string
-
-// 	ageChan := make(chan string)
-// 	nChan := make(chan string)
-// 	sChan := make(chan string)
-
-// 	fullname := getFullName()
-// 	go getAge(ageChan)
-// 	go getNation(nChan)
-// 	go getSex(sChan)
-
-// 	for i := 0; i < 3; i++ {
-// 		select {
-// 		case g1 := <-ageChan:
-// 			age = g1
-// 		case g2 := <-nChan:
-// 			n = g2
-// 		case g3 := <-sChan:
-// 			s = g3
-// 		}
-// 	}
-
-// 	st.AddPerson(storage.Person{
-// 		FullName: fullname,
-// 		Age:      age,
-// 		Nation:   n,
-// 		Sex:      s,
-// 	})
-
-// }
-
-func buildAgeRequest(name string) string {
-	query := url.Values{}
-	query.Add("name", name)
-
-	return ageApiURL + "?" + query.Encode()
-}
-
-func getAge(req string) (int, error) {
-	resp, err := http.Get(req)
-	if err != nil {
-		return 0, err
+		log.Info("Person created and saved in storage")
+		log.Info("Persons: ", st.GetPersons())
 	}
-	defer resp.Body.Close()
-
-	tmp := struct {
-		Age int `json:"age"`
-	}{}
-
-	err = json.NewDecoder(resp.Body).Decode(&tmp)
-	if err != nil {
-		return 0, err
-	}
-
-	return tmp.Age, nil
 }
 
 func createPersonFromRequest(reqBody io.ReadCloser, log *logrus.Logger) (storage.Person, error) {
@@ -105,64 +54,94 @@ func createPersonFromRequest(reqBody io.ReadCloser, log *logrus.Logger) (storage
 		return storage.Person{}, err
 	}
 
-	ageReq := buildAgeRequest(person.Name)
-	age, err := getAge(ageReq)
-	log.Debugf("Get age: %d from request: %s", age, ageReq)
+	reqMap := getOpenApiReqs(person.Name)
 
-	if err != nil {
-		return storage.Person{}, err
-	}
+	//TODO: use goroutines with errgroup.WithContext
+	//TODO: replace getAge, getGender, getNationality single func
+	/* smth like
+	   respMap := getAdditionalInfo(reqMap), respMap["age"] <- age etc */
+
+	log.Warn("GOROUTINES ARE NOT IMPLEMENTED")
+	log.Warn("Replace with single func isn't implemented")
+	age, err := getAge(reqMap["age"])
+	gender, err := getGender(reqMap["gender"])
+	country, err := getNationality(reqMap["country"])
+
+	log.Debugf("Get age: %d from request: %s", age, reqMap["age"])
+	log.Debugf("Get country: %s from request: %s", gender, reqMap["gender"])
+	log.Debugf("Get gender: %s from request: %s", country, reqMap["country"])
 
 	person.Age = age
+	person.CountryID = country
+	person.Gender = gender
 
 	return person, nil
 }
 
-func APIHandler(st *storage.Storage, log *logrus.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		person, err := createPersonFromRequest(r.Body, log)
-		if err != nil {
-			log.Error("Failed to create person throught API: ", err)
-			return
-		}
-
-		log.Info("Create Person: ", person)
-		log.Info("Persons: ", st.GetPersons())
+func getAge(req string) (int, error) {
+	resp, err := http.Get(req)
+	if err != nil {
+		return 0, err
 	}
+	defer resp.Body.Close()
+
+	tmp := ageApiJSON{}
+
+	err = json.NewDecoder(resp.Body).Decode(&tmp)
+	if err != nil {
+		return 0, err
+	}
+
+	return tmp.Age, nil
 }
 
-// func APIHandler(st *storage.Storage, log *logrus.Logger) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		var person storage.Person
+func getGender(req string) (string, error) {
+	resp, err := http.Get(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
 
-// 		err := json.NewDecoder(r.Body).Decode(&person)
-// 		if err != nil {
-// 			log.Error(err)
-// 			return
-// 		}
+	tmp := genderApiJSON{}
 
-// 		log.Info("person body: ", person)
-// 		ageReq := buildAgeRequest(person.FullName.Name)
-// 		fmt.Println(ageReq)
-// 		resp, err := http.Get(ageReq)
-// 		if err != nil {
-// 			log.Error(err)
-// 		}
+	err = json.NewDecoder(resp.Body).Decode(&tmp)
+	if err != nil {
+		return "", err
+	}
 
-// 		t := struct {
-// 			Age int `json:"age"`
-// 		}{}
-// 		err = json.NewDecoder(resp.Body).Decode(&t)
-// 		if err != nil {
-// 			log.Error(err)
-// 		}
-// 		fmt.Println(t.Age)
-// 		log.Info("get age: ", t.Age)
-// 		//nat req
-// 		//sex req
+	return tmp.Gender, nil
+}
 
-// 		st.AddPerson(person)
+func getNationality(req string) (string, error) {
+	resp, err := http.Get(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
 
-// 		fmt.Println(st.GetPersons())
-// 	}
-// }
+	tmp := countryApiJSON{}
+
+	err = json.NewDecoder(resp.Body).Decode(&tmp)
+	if err != nil {
+		return "", err
+	}
+
+	return tmp.Country[0].CountryID, nil
+}
+
+func getOpenApiReqs(name string) map[string]string {
+	reqMap := make(map[string]string)
+
+	reqMap["age"] = buildOpenApiRequest(name, ageApiURL)
+	reqMap["gender"] = buildOpenApiRequest(name, genderApiURL)
+	reqMap["country"] = buildOpenApiRequest(name, countryApiURL)
+
+	return reqMap
+}
+
+func buildOpenApiRequest(name string, apiURL string) string {
+	query := url.Values{}
+	query.Add("name", name)
+
+	return apiURL + "?" + query.Encode()
+}
