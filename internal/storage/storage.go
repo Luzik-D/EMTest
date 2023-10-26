@@ -4,7 +4,7 @@ type Person struct {
 	FullName
 	Age       int    `json:"age,omitempty"`
 	Gender    string `json:"gender,omitempty"`
-	CountryID string `json:"country_id"`
+	CountryID string `json:"country_id,omitempty"`
 }
 
 type FullName struct {
@@ -37,4 +37,21 @@ func (s *Storage) GetPersons() []Person {
 	}
 
 	return persons
+}
+
+func (s *Storage) GetPersonById(id int) Person {
+	return s.st[id]
+}
+
+func (s *Storage) DeleteById(id int) {
+	delete(s.st, id)
+}
+
+func (s *Storage) CreatePerson(person Person) {
+	s.id++
+	s.st[s.id] = person
+}
+
+func (s *Storage) UpdatePersonById(id int, person Person) {
+	s.st[id] = person
 }

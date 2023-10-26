@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 
 	".github.com/Luzik-D/EMTest/internal/api"
+	".github.com/Luzik-D/EMTest/internal/http-server/handlers"
 	".github.com/Luzik-D/EMTest/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -31,11 +31,14 @@ func main() {
 	// route
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Hello world")
-	}).Methods("GET")
-
 	router.HandleFunc("/api", api.APIHandler(st, logger)).Methods("POST")
+
+	router.HandleFunc("/", handlers.GetPersons(logger, st)).Methods("GET")
+	router.HandleFunc("/", handlers.CreatePerson(logger, st)).Methods("POST")
+
+	router.HandleFunc("/{id:[0-9]+}", handlers.GetPerson(logger, st)).Methods("GET")
+	router.HandleFunc("/{id:[0-9]+}", handlers.UpdatePerson(logger, st)).Methods("PUT")
+	router.HandleFunc("/{id:[0-9]+}", handlers.DeletePerson(logger, st)).Methods("DELETE")
 
 	logger.Info("Running server on " + os.Getenv("address"))
 	logger.Fatal(http.ListenAndServe(os.Getenv("address"), router))
